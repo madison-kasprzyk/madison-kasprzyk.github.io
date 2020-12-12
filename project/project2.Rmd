@@ -1,0 +1,244 @@
+---
+title: 'Modeling, Testing, and Predicting'
+author: "SDS348"
+date: '2020-11-25'
+output:
+  html_document:
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+hook_output = knit_hooks$get('output')
+knit_hooks$set(output = function(x, options) {
+  # this hook is used only when the linewidth option is not NULL
+  if (!is.null(n <- options$linewidth)) {
+    x = knitr:::split_lines(x)
+    # any lines wider than n should be wrapped
+    if (any(nchar(x) > n)) x = strwrap(x, width = n)
+    x = paste(x, collapse = '\n')
+  }
+  hook_output(x, options)
+})
+
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE,fig.align="center",warning=FALSE,message=FALSE,fig.width=8, fig.height=5, linewidth=60)
+options(tibble.width = 100,width = 100)
+library(tidyverse)
+```
+
+
+
+
+```{R}
+library(tidyverse)
+library(dplyr)
+
+medicaid <- read.csv("Medicaid1986.csv")
+
+```
+
+The dataset I am using includes data on those enrolled in Medicaid in 1986. There are 18 total variables describing the data, but I have chosen to only use 6. Ethnicity is a binary categorical variable, the two options are either "cauc" (caucasion) or "other". School is a numerical variable, and tells the number of years of school completed ranging from 0 to 18. Income is also a numerical variable and tells the annual household income. Health is a numerical variable and is a value ranging from -2.264 to 7.217. Access is a binary numeric variable and tells us the availability of health services, with 0 being low access and 1 being high access. Lastly, visits is a numeric variable indicating the number of doctor's visits.
+
+1. MANOVA Testing
+
+A one-way MANOVA was conducted to determine the effect of ethnicity on five dependent variables (school, income, health, access, visits). Multivariate normality was tested and revealed p<.05, so the assumption of multivariate normality was violated. Significant differences were found between the two ethnicity categories for at least one of the dependent variables, Pillai = .076, pseudo F(5, 990) = 16.299, p < .001. Five univariate ANOVAs were conducted as follow up tests to the MANOVA. The univariate ANOVAs for school and income were found to be significant, F(1,994) = 73.669, p<.001 and F(1,994) = 10.334, p<.001. Post hoc analysis was done to determine whether ethnicity differed by school and income. Both ethnicities were found to differ from each other significantly in terms of school and income after adjusting for multiple comparisons (bonferroni = .05/10 = .005). A total of 10 tests were performed, and the probability of at least one Type I error rate is .401. 
+```{R}
+library(rstatix)
+
+group <- medicaid$ethnicity
+DVs <- medicaid %>% select(school, income, health1, access, visits)
+
+#Test multivariate normality for each group (null: assumption met)
+sapply(split(DVs,group), mshapiro_test)
+
+#If any p<.05, stop (assumption violated). If not, test homogeneity of covariance matrices
+
+#Optionally View covariance matrices for each group
+lapply(split(DVs,group), cov)
+
+manova <- manova(cbind(school, income, health1, access, visits) ~ ethnicity, data = medicaid)
+summary(manova)
+summary.aov(manova)
+pairwise.t.test(medicaid$school, medicaid$ethnicity, p.adj = "none")
+pairwise.t.test(medicaid$income, medicaid$ethnicity, p.adj = "none")
+1 - .95^10 #probability of Type I error
+.05/10 #bonferroni correction
+
+```
+
+
+2. Randomization
+
+A mean difference randomization test was performed. The null hypothesis is that the mean years of school completed is the same for the "cauc" and "other" ethnicity category. The alternate hypothesis is that the mean years of school completed is different for the "cauc" and "other" ethnicity category. The p-value is 0, and we fail to reject the null hypothesis because p > 0.05. 
+```{R}
+set.seed(348)
+medicaid%>%group_by(ethnicity)%>% summarize(means=mean(school))%>%summarize(`mean_diff`=diff(means))
+ggplot(medicaid,aes(school,fill=ethnicity))+geom_histogram(bins=6.5) + facet_wrap(~ethnicity,ncol=2)+theme(legend.position="none")
+
+#mean difference
+rand_dist <- vector()
+for(i in 1:5000){
+new_school <-data.frame(ethnicity=medicaid$ethnicity, school=sample(medicaid$school))
+rand_dist[i] <- mean(new_school[new_school$ethnicity == "cauc",]$school) -  mean(new_school[new_school$ethnicity == "other",]$school)
+}
+mean(rand_dist>2.480515 | rand_dist< -2.480515)
+{hist(rand_dist,main="",ylab=""); abline(v = c(-2.480515, 2.480515),col="red")}
+```
+
+
+3. Linear Regression
+
+The health of "other" ethnicities is 0.1 units less than for the "cauc" ethnicity (not significant, t = -1.025, df = 993, p = 0.3057). The health of those with low access to health services is 0.15 units less than those with high access to health services (not significant, t = 1.406, df = 993, p = 0.160). The slope for health on "other" ethnicities is 0.157 greater for those with low access than those with high access to health services. Assumptions of linearity and homoskedacity were met, but assumptions of normality were not met. After correcting for robust standard errors, there is no change in significance from before the robust SEs were computed.
+
+```{R}
+library(lmtest)
+library(sandwich)
+medicaid2 <- mutate(medicaid, access2 = ifelse(access > 0.5, "high", "low"))
+fit <- lm(health1~ethnicity*access2, data = medicaid2)
+summary(fit)
+ggplot(medicaid, aes(x = access, y = health1, group = ethnicity)) + geom_point(aes(color = ethnicity)) + geom_smooth(method = "lm", se = F, aes(color = ethnicity))
+
+resids<-lm(health1~ethnicity + access2, data=medicaid2)$residuals
+fitted<-lm(health1~ethnicity + access2, data=medicaid2)$fitted.values
+ggplot()+geom_histogram(aes(resids),bins=10)
+ggplot()+geom_point(aes(fitted,resids))
+resids<-fit$residuals
+fitvals<-fit$fitted.values
+ggplot()+geom_point(aes(fitvals,resids))+geom_hline(yintercept=0, color='red') #linearity/homoskedacity
+ggplot()+geom_histogram(aes(resids), bins=20)
+ggplot()+geom_qq(aes(sample=resids))+geom_qq() #normality
+coeftest(fit, vcov = vcovHC(fit))
+```
+
+
+4. Bootstrapped Standard Errors
+
+The bootstrapped SEs are almost identical to the robust SEs and to the original SEs. The bootstrapped SE for ethnicity is a little bit higher than the robust SE, but identical to the original. The bootstrapped SE for access is lower than the original but identical to the robust SE. 
+
+```{R}
+summary(fit)
+boot_dat<- sample_frac(medicaid2, replace=T)
+samp_distn<-replicate(5000, {
+boot_dat <- sample_frac(medicaid2, replace=T) 
+fit <- lm(health1~ethnicity + access2, data=boot_dat) 
+coef(fit)
+})
+samp_distn %>% t %>% as.data.frame %>% summarize_all(sd)
+
+```
+
+
+5. Logistic Regression
+
+Controlling for visits, for every 1 unit increase in income the odds of having high access to health services decreases by 0.018 (not significant). Controlling for income, for every 1 unit increase in visits the odds of having high access to health services increases by 0.019 (not significant). A confusion matrix is reported and accuracy is 0.269, sensitivity (TPR) is 0.923, specificity (TNR) is 0.0825, and precision (PPV) is 0.223. An ROC plot is made and the AUC was calculated as being 0.476.
+
+```{R}
+medicaid3 <- mutate(medicaid, access3 = ifelse(access > 0.5, 1, 0)) 
+fit2<-glm(access3~income + visits, data=medicaid3, family="binomial")
+coeftest(fit2)
+prob<-predict(fit2,type="response")
+pred<-ifelse(prob>.5,1,0)
+table(predict=as.numeric(prob>.2),truth=medicaid3$access3)%>%addmargins
+64/775 #specificity (TNR)
+204/915 #precision
+204/221 #sensitivity (TPR)
+(204+64)/996 #accuracy
+
+medicaid3$access3<-as.factor(medicaid3$access3) 
+medicaid3$logit<-predict(fit2,type="link") #predicted logit
+head(medicaid3)
+medicaid3 %>% ggplot() + geom_density(aes(logit, color=access3, fill=access3), alpha=.4) + theme(legend.position=c(.85,.85))+geom_vline(xintercept=0) + xlab("logit (log-odds)") + geom_rug(aes(logit,color=access3))
+
+library(plotROC)
+ROCplot<-ggplot(medicaid2)+geom_roc(aes(d=access2,m=prob), n.cuts=0)
+ROCplot
+calc_auc(ROCplot)
+```
+
+
+6. LASSO
+
+Class_diag was used to compute the in-sample classification diagnostics from the logistic regression; the accuracy is 0.269, the sensitivity is 0.923, the specificity is 0.0825, the precision is 0.222, and the AUC is 0.524. A 10-fold CV was performed and the out of sample classifications diagnostics were computed; the accuracy is 0.378, the sensitivity is 0.819, the specificity is 0.254, the precision is 0.238, and the AUC is 0.544. This AUC is slightly higher than the in-sample AUC. A lasso was then performed, and the only variable retained is health1, meaning that this is the most predictive variable of access to health services. Another 10-fold CV was performed using only the health1 variable, and an AUC of 0.535 was computed. This out of sample AUC is lower than the AUC computed in the first 10-fold that was performed, but higher than the in-sample AUC computed.
+
+```{R}
+fit3<-glm(access3~income + visits + ethnicity + school + health1, data=medicaid3, family="binomial")
+coeftest(fit3)
+probs2<-predict(fit3,type="response")
+class_diag <- function(probs2,truth){
+  #CONFUSION MATRIX: CALCULATE ACCURACY, TPR, TNR, PPV
+  tab<-table(factor(probs2>.2,levels=c("FALSE","TRUE")),truth)
+  acc=sum(diag(tab))/sum(tab)
+  sens=tab[2,2]/colSums(tab)[2]
+  spec=tab[1,1]/colSums(tab)[1]
+  ppv=tab[2,2]/rowSums(tab)[2]
+  f1=2*(sens*ppv)/(sens+ppv)
+
+  if(is.numeric(truth)==FALSE & is.logical(truth)==FALSE) truth<-as.numeric(truth)-1
+  
+  ord<-order(probs2, decreasing=TRUE)
+  probs <- probs2[ord]; truth <- truth[ord]
+  
+  TPR=cumsum(truth)/max(1,sum(truth)) 
+  FPR=cumsum(!truth)/max(1,sum(!truth))
+  
+  dup<-c(probs2[-1]>=probs2[-length(probs2)], FALSE)
+  TPR<-c(0,TPR[!dup],1); FPR<-c(0,FPR[!dup],1)
+  n <- length(TPR)
+  auc<- sum( ((TPR[-1]+TPR[-n])/2) * (FPR[-1]-FPR[-n]) )
+
+  data.frame(acc,sens,spec,ppv,f1,auc)
+}
+class_diag(probs2,medicaid3$access3)
+
+#10 fold
+set.seed(1234)
+k=10 
+data<-medicaid3[sample(nrow(medicaid3)),] #randomly order rows
+folds<-cut(seq(1:nrow(medicaid3)),breaks=k,labels=F) #create folds
+
+diags<-NULL
+for(i in 1:k){
+  train<-data[folds!=i,] 
+  test<-data[folds==i,]
+  
+  truth<-test$access3
+  
+  fit3<-glm(access3~income + visits + ethnicity + school + health1, data=medicaid3, family="binomial")
+  
+  probs3<-predict(fit3,newdata = test,type="response")
+  
+  diags<-rbind(diags,class_diag(probs3,truth))
+}
+summarize_all(diags,mean)
+
+#lasso
+library(glmnet)
+y<-as.matrix(medicaid3$access3) 
+x<-model.matrix(access3~income + visits + ethnicity + school + health1, data=medicaid3)[,-1]
+cv<-cv.glmnet(x,y,family="binomial")
+lasso<-glmnet(x,y,family="binomial",lambda=cv$lambda.1se)
+coef(lasso)
+
+#10 fold with only health1 variable
+set.seed(1234)
+k=10 
+diags2<-NULL
+for(i in 1:k){
+  train2<-data[folds!=i,] 
+  test2<-data[folds==i,]
+  
+  truth2<-test2$access3
+  
+  fit4<-glm(access3~health1, data=medicaid3, family="binomial")
+  
+  probs4<-predict(fit4,newdata = test2,type="response")
+  
+  diags2<-rbind(diags,class_diag(probs4,truth2))
+}
+summarize_all(diags2,mean)
+```
+
+

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Madison Kasprzyk</title>
+    <link>/</link>
+    <description>Recent content on Madison Kasprzyk</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-US</language>
+    <lastBuildDate>Thu, 10 Dec 2020 00:00:00 +0000</lastBuildDate><atom:link href="/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Regular Expressions!</title>
+      <link>/post/2020/12/10/blog-post/</link>
+      <pubDate>Thu, 10 Dec 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/post/2020/12/10/blog-post/</guid>
+      <description>Regular expressions, or regex, extract information from text by searching for matches of a specific pattern. They can be used in almost every programming language, including Python and R. Arguably the most powerful tool in regex is findall(), which I will be talking about today. The findall() function finds ALL of the matches and returns them as a list of strings, where each string represents one match. Here are some common symbols used in regex, for your own knowledge:</description>
+    </item>
+    
+    <item>
+      <title>Modeling, Testing, and Predicting</title>
+      <link>/project/project2/</link>
+      <pubDate>Wed, 25 Nov 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/project/project2/</guid>
+      <description>library(tidyverse) library(dplyr) medicaid &amp;lt;- read.csv(&amp;quot;Medicaid1986.csv&amp;quot;) The dataset I am using includes data on those enrolled in Medicaid in 1986. There are 18 total variables describing the data, but I have chosen to only use 6. Ethnicity is a binary categorical variable, the two options are either &amp;quot;cauc&amp;quot; (caucasion) or &amp;quot;other&amp;quot;. School is a numerical variable, and tells the number of years of school completed ranging from 0 to 18. Income is also a numerical variable and tells the annual household income.</description>
+    </item>
+    
+    <item>
+      <title>Wrangling &amp; Exploratory Data Analysis</title>
+      <link>/project/project1/</link>
+      <pubDate>Thu, 08 Oct 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/project/project1/</guid>
+      <description>I originally chose two datasets, one that listed the unemployment rates by county and another that listed the covid-19 rates and death rates by county. I decided to use a third dataset because I did not have enough variables, and so I picked another dataset that listed demographic data such as the proportion of a county&#39;s population that was over the age of 60 and the number of ICU beds in that county.</description>
+    </item>
+    
+    <item>
+      <title>Projects</title>
+      <link>/projects/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>/projects/</guid>
+      <description> Check out some of the stuff I&#39;ve worked on this semester!
+ Wrangling &amp;amp; Exploratory Data Analysis
+ Modeling, Inference, Prediction
+  -- </description>
+    </item>
+    
+    <item>
+      <title>Resume</title>
+      <link>/resume/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>/resume/</guid>
+      <description>    </description>
+    </item>
+    
+  </channel>
+</rss>

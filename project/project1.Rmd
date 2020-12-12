@@ -1,0 +1,139 @@
+---
+title: "Wrangling & Exploratory Data Analysis"
+author: "Madison Kasprzyk"
+date: "2020-10-08"
+output:
+  html_document:
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+  pdf_document:
+    toc: no
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, fig.align = "center", warning = F, message = F,
+tidy=TRUE, tidy.opts=list(width.cutoff=60), R.options=list(max.print=100))
+```
+
+
+
+I originally chose two datasets, one that listed the unemployment rates by county and another that listed the covid-19 rates and death rates by county. I decided to use a third dataset because I did not have enough variables, and so I picked another dataset that listed demographic data such as the proportion of a county's population that was over the age of 60 and the number of ICU beds in that county. I chose these datasets because I wanted to do something that was related to the current pandemic, and I wanted to filter the results by different socioeconomic factors. I am thinking that in the Texas counties with high unemployment rates, I will also see higher rates of covid-19 cases, as well as lower numbers of ICU beds.
+
+#### 1. Tidying: Rearranging Wide/Long 
+
+Here I edited my three datasets using filter, select, and mutate so that they only included the variables that I needed and also so that they only included data from the specific dates that I wanted.
+
+```{r}
+library(tidyverse)
+covid <- read_csv("covidcases.csv")
+ICU <- read_csv("ICUbeds.csv")
+unemployment <- read_csv("unemployment.csv")
+
+#texas unemployment data
+texas_unemployment <- filter(unemployment, State == "Texas" & Year == "2016" & Month == "October") %>% select(-c(Year, Month, State)) %>% mutate(County = str_replace(County, " County", ""))
+#texas covid data
+texas_covid <- filter(covid, state == "Texas" & date == "2020-10-02") %>% rename(County = county) %>% select(-c(date, state))
+#texas ICU data
+texas_ICU <- filter(ICU, State == "Texas") %>% select(-c(State))
+
+#tydyr functions used to reshape summary statistics data in #3
+```
+
+#### 2. Joining/Merging
+I used a full_join to join my three datasets because I wanted all rows and columns from each dataset to be retained. There were a few counties that were not included in all 3 datasets, and so I decided to drop all rows containing NA values using drop_na in order to fix for this and make my data uniform. This drop did not make a difference on any analysis of my data because only three rows were dropped.
+
+```{r}
+county_join <- full_join(texas_covid, texas_unemployment, by=c("County")) %>% full_join(., texas_ICU, by=c("County")) %>% drop_na()
+```
+
+
+#### 3. Wrangling
+
+The filter and select functions were both used to manipulate my initial datasets. Counties from Texas were selected for across all datasets, and data from the most recent dates were selected for from each dataset using filter(). Additionally, select() was used to remove columns that were not relevant to the data. Mutate() was used to create two new categorical variables in addition to the categorical variable that I already had, County. A variable for rate of unemployment was created and included a high, medium, and low value. A variable for the number of ICU beds was created and included only a high and low value. The arrange() function was used to arrange the data by greatest to least number of covid cases and ICU beds in order to better explore the datasets. 
+
+The summarize function was used to view the mean, standard deviation, n_distinct values, minimum, and maximum values for each numerical variable in the dataset. This was also grouped by rate_cat, or the rate of unemployment. After summarizing the data, tydyr functions pivot_longer and pivot_wider were used to reshape the data into a nicer looking table.
+    
+```{r}
+#filter and select used to manipulate datasets
+texas_unemployment <- filter(unemployment, State == "Texas" & Year == "2016" & Month == "October") %>% select(-c(Year, Month, State)) %>% mutate(County = str_replace(County, " County", "")) #texas unemployment data
+texas_covid <- filter(covid, state == "Texas" & date == "2020-10-02") %>% rename(County = county) %>% select(-c(date, state)) #texas covid data
+texas_ICU <- filter(ICU, State == "Texas") %>% select(-c(State)) #texas ICU data
+
+#mutate used to create categorical variables
+county_join <- county_join %>% mutate(rate_cat = ifelse(Rate>8, "high", ifelse(Rate<=8 & 4<=Rate, "med", "low")))
+county_join <- county_join %>% mutate(ICU_cat = ifelse(`ICU Beds`>250, "high", "low"))
+
+#arrange by greatest to least number of COVID cases and greatest to least number of ICU beds
+county_join %>% arrange(desc(cases))
+county_join %>% arrange(desc(`ICU Beds`))
+
+#summarize used to find summary statistics, pivot_longer and pivot_wider used to reshape data
+summary_data <- county_join %>% summarize_if(is.numeric, list(mean, sd, n_distinct, min, max)) 
+summary_data %>% pivot_longer(cols = 1:35, names_to = "statistic", values_to = "value") %>% separate(statistic, sep="_", into=c("variable", "statistic")) %>% pivot_wider(names_from = "statistic", values_from = "value") %>% rename(mean = fn1, sd = fn2, n_distinct = fn3, min = fn4, max = fn5)
+#same as above except now grouped by rate_cat using group_by()
+county_join %>% group_by(rate_cat) %>% summarize_if(is.numeric, list(mean, sd, n_distinct, min, max)) %>% pivot_longer(cols = 2:35, names_to = "statistic", values_to = "value") %>% separate(statistic, sep="_", into=c("variable", "statistic")) %>% pivot_wider(names_from = "statistic", values_from = "value") %>% rename(mean = fn1, sd = fn2, n_distinct = fn3, min = fn4, max = fn5) %>% select(-c(`Percent of Population Aged 60+_fn5`))
+```
+
+
+#### 4. Visualizing
+
+In the heatmap, the variables with the highest correlations were population aged 60+ and COVID-19 cases and deaths, COVID-19 deaths and COVID-19 cases, number of ICU beds and COVID-19 deaths, number of ICU beds and COVID-19 cases, and population aged 60+ and number of ICU beds. There was almost no correlation between unemployment rate and any other variable.
+
+In the geom_point ggplot we see a relationship between the number of COVID-19 cases and the number of people over aged 60. There are higher amounts of COVID-19 cases in populations with a higher amount of people aged 60+. This plot was also separated by rate of unemployment, but there is no clear relationship between unemployment rate, number of COVID-19 cases, and the number of people aged 60+. There does seem to be a slightly higher rate of unemployment where the population over age 60 is small, but it is not a big enough difference to take note of. 
+
+In the geom_bar plot there is a relationship between the number of COVID-19 cases and the unemployment rate. Texas counties with a medium unemployment rate, which is defined as a rate between 4 and 8, have the highest number of COVID-19 cases, and Texas counties with a low unemployment rate, defined as a rate below 4, have the second highest number of COVID-19 cases. Counties with high rates of unemployment, rates above 8, have very few COVID-19 cases. Additionally, counties with medium unemployment were more likely to have low numbers of ICU beds than counties with low unemployment. Low number of ICU beds is defined as having less than 250 ICU beds in the county. Counties with high rates of unemployment only had low amounts of ICU beds. 
+    
+```{r}
+#correlation heatmap
+cormat <- county_join %>% select_if(is.numeric) %>% cor(use="pair")
+tidycor <- cormat %>% as.data.frame %>% rownames_to_column("var1") %>%
+pivot_longer(-1,names_to="var2",values_to="correlation")
+tidycor %>% ggplot(aes(var1, var2, fill = correlation)) + geom_tile() + scale_fill_gradient2(low="snow",mid="thistle",high="thistle4") + geom_text(aes(label=round(correlation,2)),color = "black", size = 4) + theme(axis.text.x = element_text(angle = 90, hjust=1)) + coord_fixed() + ggtitle("Correlation Heatmap of Numeric Variables")
+
+library(ggplot2)
+# geom_point
+ggplot(county_join, aes(`Population Aged 60+`, `cases`, color = Rate)) + geom_point(size = 2, stat = "summary", fun = mean) + ggtitle("Population Aged 60+ vs. COVID-19 Cases by Rate of Unemployment") + ylab("COVID-19 Cases") + scale_color_gradient(low="lightpink3", high="palegreen4") + theme_linedraw() + scale_y_continuous(breaks=seq(0, 150000, 25000))
+
+# geom_bar
+ggplot(county_join, aes(rate_cat)) + geom_col(aes(y = `cases`, fill = `ICU_cat`)) + ggtitle("Unemployment Rate vs. COVID-19 Cases by Amount of ICU Beds") + ylab("COVID-19 Cases") + xlab("Unemployment Rate") + theme_linedraw() + scale_fill_manual("ICU_cat", values = c("high" = "lavenderblush2", "low" = "lightgoldenrod1"))
+```
+
+
+
+#### 5. Dimensionality Reduction 
+
+The silhouette plot was used to determine how many clusters to use, it told us that there are a total of k = 10 clusters and so that many clusters was used in this analysis. After creating the clusters, they were plotted on a geom_point ggplot and the variables `Population Aged 60+` and `cases` were used because these two variables have one of the highest correlations among the variables in my data. The clustered data was then plotted with data separating the two chosen variables by either a high, medium, or low unemployment rate. However, we do not see a strong correlation between the clustered data and the unemployment rate data. Lastly, a goodness of fit line was plotted using the silhouette widths of each cluster. When looking at the silhouette plot, we can see that the silhouettes have an average width of 0.55, which means that a reasonable structure was found for the silhouettes.
+    
+```{r}
+##will want to scale variables first?
+library(cluster)
+
+#scale data
+
+pam1 <- county_join %>% pam(k=10)
+pam1
+pam1$silinfo$avg.width
+plot(pam1,which=2) #choose number of clusters
+
+pamclust<-county_join %>% mutate(cluster=as.factor(pam1$clustering)) #cluster analysis
+
+pamclust %>% ggplot(aes(`Population Aged 60+`, cases, color=cluster)) + geom_point() #visualize clusters
+pamclust %>% group_by(cluster) %>% summarize_if(is.numeric,mean,na.rm=T)
+county_join %>% slice(pam1$id.med)
+county_join %>% ggplot(aes(`Population Aged 60+`, cases, color=rate_cat)) + geom_point()
+pamclust %>% ggplot(aes(`Population Aged 60+`, cases, color=rate_cat, shape=cluster))+geom_point(size=3)
+
+pam_dat<-county_join%>%select(`Population Aged 60+`, cases) #goodness of fit
+sil_width<-vector()
+for(i in 2:10){
+pam_fit <- pam(pam_dat, k = i)
+sil_width[i] <- pam_fit$silinfo$avg.width
+} 
+ggplot()+geom_line(aes(x=1:10,y=sil_width))+scale_x_continuous(name="k",breaks=1:10)
+
+plot(pam1,which=2) #silhouette plot
+```
+
+...

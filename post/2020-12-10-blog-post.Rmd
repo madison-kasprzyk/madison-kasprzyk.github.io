@@ -1,0 +1,47 @@
+---
+title: 'Regular Expressions!'
+author: 'Madison Kasprzyk'
+date: '2020-12-10'
+slug: blog-post
+categories: []
+tags: []
+description: ''
+---
+Regular expressions, or regex, extract information from text by searching for matches of a specific pattern. They can be used in almost every programming language, including Python and R. Arguably the most powerful tool in regex is findall(), which I will be talking about today. The findall() function finds ALL of the matches and returns them as a list of strings, where each string represents one match. Here are some common symbols used in regex, for your own knowledge:
+
+<center>
+![](/post/2020-12-10-blog-post_files/Regex.png)
+</center>
+
+Lets do some basic examples! Say we have a string of "abc aac ac acb bac a," and we want to find different matches within this string.
+
+
+```{python}
+import re
+x="abc aac ac acb bac a"
+re.findall(r"a.",x) #this will grab all instances
+```
+
+```{python}
+import re
+x="abc aac ac acb bac a"
+re.findall(r"a+",x) #this will grab matches with 1 or more "a's"
+```
+
+```{python}
+import re
+x="abc aac ac acb bac a"
+re.findall(r"a{2}",x) #this will grab all instances where there are two a's together
+```
+
+```{python}
+import re
+x="abc aac ac acb bac a"
+re.findall(r"a..\s",x) #this will grab all instances that begin with a and have two letters after
+```
+
+All information written in this blog post was obtained from my computational biology professor, Nathaniel Woodward's, lectures.
+
+[In case you want to learn more about regular expressions, click here!](https://developers.google.com/edu/python/regular-expressions)
+
+

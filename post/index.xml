@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts on Madison Kasprzyk</title>
+    <link>/post/</link>
+    <description>Recent content in Posts on Madison Kasprzyk</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-US</language>
+    <lastBuildDate>Thu, 10 Dec 2020 00:00:00 +0000</lastBuildDate><atom:link href="/post/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Regular Expressions!</title>
+      <link>/post/2020/12/10/blog-post/</link>
+      <pubDate>Thu, 10 Dec 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/post/2020/12/10/blog-post/</guid>
+      <description>Regular expressions, or regex, extract information from text by searching for matches of a specific pattern. They can be used in almost every programming language, including Python and R. Arguably the most powerful tool in regex is findall(), which I will be talking about today. The findall() function finds ALL of the matches and returns them as a list of strings, where each string represents one match. Here are some common symbols used in regex, for your own knowledge:</description>
+    </item>
+    
+  </channel>
+</rss>

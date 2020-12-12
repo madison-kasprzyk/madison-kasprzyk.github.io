@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Madison Kasprzyk" />
+    
+    <link rel="shortcut icon" type="image/x-icon" href="../../img/favicon.ico">
+    <title>Wrangling &amp; Exploratory Data Analysis</title>
+    <meta name="generator" content="Hugo 0.79.0" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="../../css/main.css" />
+    <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,400,200bold,400old" />
+    
+    <!--[if lt IE 9]>
+			<script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+			<script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+		<![endif]-->
+
+    
+  </head>
+
+  <body>
+    <div id="wrap">
+      
+      <nav class="navbar navbar-default">
+  <div class="container">
+    <div class="navbar-header">
+      <a class="navbar-brand" href="../../"><i class="fa fa-home"></i></a>
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <div class="navbar-collapse collapse" id="navbar">
+      <ul class="nav navbar-nav navbar-right">
+      
+        
+        <li><a href="../../post/">BLOG</a></li>
+        
+        <li><a href="../../projects/">PROJECTS</a></li>
+        
+        <li><a href="../../resume/">RESUME</a></li>
+        
+      
+      </ul>
+    </div>
+  </div>
+</nav>
+
+      <div class="container">
+        <div class="blog-post">
+          <h3>
+            <strong><a href="../../project/project1/">Wrangling &amp; Exploratory Data Analysis</a></strong>
+          </h3>
+        </div>
+ 
+<div class="blog-title">
+          <h4>
+         October 8, 2020 
+            &nbsp;&nbsp;
+            
+          </h4>
+        </div>
+
+        <div class="panel panel-default">
+          <div class="panel-body">
+            <div class="blogpost">
+              
+
+
+<p>I originally chose two datasets, one that listed the unemployment rates by county and another that listed the covid-19 rates and death rates by county. I decided to use a third dataset because I did not have enough variables, and so I picked another dataset that listed demographic data such as the proportion of a county's population that was over the age of 60 and the number of ICU beds in that county. I chose these datasets because I wanted to do something that was related to the current pandemic, and I wanted to filter the results by different socioeconomic factors. I am thinking that in the Texas counties with high unemployment rates, I will also see higher rates of covid-19 cases, as well as lower numbers of ICU beds.</p>
+<div id="tidying-rearranging-widelong" class="section level4">
+<h4>1. Tidying: Rearranging Wide/Long</h4>
+<p>Here I edited my three datasets using filter, select, and mutate so that they only included the variables that I needed and also so that they only included data from the specific dates that I wanted.</p>
+<pre class="r"><code>library(tidyverse)
+covid &lt;- read_csv(&quot;covidcases.csv&quot;)
+ICU &lt;- read_csv(&quot;ICUbeds.csv&quot;)
+unemployment &lt;- read_csv(&quot;unemployment.csv&quot;)
+
+# texas unemployment data
+texas_unemployment &lt;- filter(unemployment, State == &quot;Texas&quot; &amp; 
+    Year == &quot;2016&quot; &amp; Month == &quot;October&quot;) %&gt;% select(-c(Year, 
+    Month, State)) %&gt;% mutate(County = str_replace(County, &quot; County&quot;, 
+    &quot;&quot;))
+# texas covid data
+texas_covid &lt;- filter(covid, state == &quot;Texas&quot; &amp; date == &quot;2020-10-02&quot;) %&gt;% 
+    rename(County = county) %&gt;% select(-c(date, state))
+# texas ICU data
+texas_ICU &lt;- filter(ICU, State == &quot;Texas&quot;) %&gt;% select(-c(State))
+
+# tydyr functions used to reshape summary statistics data in
+# #3</code></pre>
+</div>
+<div id="joiningmerging" class="section level4">
+<h4>2. Joining/Merging</h4>
+<p>I used a full_join to join my three datasets because I wanted all rows and columns from each dataset to be retained. There were a few counties that were not included in all 3 datasets, and so I decided to drop all rows containing NA values using drop_na in order to fix for this and make my data uniform. This drop did not make a difference on any analysis of my data because only three rows were dropped.</p>
+<pre class="r"><code>county_join &lt;- full_join(texas_covid, texas_unemployment, by = c(&quot;County&quot;)) %&gt;% 
+    full_join(., texas_ICU, by = c(&quot;County&quot;)) %&gt;% drop_na()</code></pre>
+</div>
+<div id="wrangling" class="section level4">
+<h4>3. Wrangling</h4>
+<p>The filter and select functions were both used to manipulate my initial datasets. Counties from Texas were selected for across all datasets, and data from the most recent dates were selected for from each dataset using filter(). Additionally, select() was used to remove columns that were not relevant to the data. Mutate() was used to create two new categorical variables in addition to the categorical variable that I already had, County. A variable for rate of unemployment was created and included a high, medium, and low value. A variable for the number of ICU beds was created and included only a high and low value. The arrange() function was used to arrange the data by greatest to least number of covid cases and ICU beds in order to better explore the datasets.</p>
+<p>The summarize function was used to view the mean, standard deviation, n_distinct values, minimum, and maximum values for each numerical variable in the dataset. This was also grouped by rate_cat, or the rate of unemployment. After summarizing the data, tydyr functions pivot_longer and pivot_wider were used to reshape the data into a nicer looking table.</p>
+<pre class="r"><code># filter and select used to manipulate datasets
+texas_unemployment &lt;- filter(unemployment, State == &quot;Texas&quot; &amp; 
+    Year == &quot;2016&quot; &amp; Month == &quot;October&quot;) %&gt;% select(-c(Year, 
+    Month, State)) %&gt;% mutate(County = str_replace(County, &quot; County&quot;, 
+    &quot;&quot;))  #texas unemployment data
+texas_covid &lt;- filter(covid, state == &quot;Texas&quot; &amp; date == &quot;2020-10-02&quot;) %&gt;% 
+    rename(County = county) %&gt;% select(-c(date, state))  #texas covid data
+texas_ICU &lt;- filter(ICU, State == &quot;Texas&quot;) %&gt;% select(-c(State))  #texas ICU data
+
+# mutate used to create categorical variables
+county_join &lt;- county_join %&gt;% mutate(rate_cat = ifelse(Rate &gt; 
+    8, &quot;high&quot;, ifelse(Rate &lt;= 8 &amp; 4 &lt;= Rate, &quot;med&quot;, &quot;low&quot;)))
+county_join &lt;- county_join %&gt;% mutate(ICU_cat = ifelse(`ICU Beds` &gt; 
+    250, &quot;high&quot;, &quot;low&quot;))
+
+# arrange by greatest to least number of COVID cases and
+# greatest to least number of ICU beds
+county_join %&gt;% arrange(desc(cases))</code></pre>
+<pre><code>## # A tibble: 251 x 12
+##    County fips   cases deaths  Rate `ICU Beds` `Total Populati… `Population Age…
+##    &lt;chr&gt;  &lt;chr&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;      &lt;dbl&gt;            &lt;dbl&gt;            &lt;dbl&gt;
+##  1 Harris 48201 146234   2615   5.1        918          4525519           651673
+##  2 Dallas 48113  86500   1139   3.8        614          2552213           377154
+##  3 Bexar  48029  58051   1323   3.7        648          1892004           307269
+##  4 Tarra… 48439  51081    728   3.7        409          1983675           306980
+##  5 Hidal… 48215  32346   1740   6.7        271           839539           119536
+##  6 Travis 48453  29647    430   3.1        294          1176584           160972
+##  7 El Pa… 48141  24999    531   4.8        203           834825           133011
+##  8 Camer… 48061  22917    953   6.6        104           420201            71392
+##  9 Nueces 48355  20661    419   5.3        115           358484            68411
+## 10 Fort … 48157  16572    292   5          128           711421           107897
+## # … with 241 more rows, and 4 more variables: `Percent of Population Aged
+## #   60+` &lt;dbl&gt;, `Residents Aged 60+ Per Each ICU Bed` &lt;chr&gt;, rate_cat &lt;chr&gt;,
+## #   ICU_cat &lt;chr&gt;</code></pre>
+<pre class="r"><code>county_join %&gt;% arrange(desc(`ICU Beds`))</code></pre>
+<pre><code>## # A tibble: 251 x 12
+##    County fips   cases deaths  Rate `ICU Beds` `Total Populati… `Population Age…
+##    &lt;chr&gt;  &lt;chr&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;      &lt;dbl&gt;            &lt;dbl&gt;            &lt;dbl&gt;
+##  1 Harris 48201 146234   2615   5.1        918          4525519           651673
+##  2 Bexar  48029  58051   1323   3.7        648          1892004           307269
+##  3 Dallas 48113  86500   1139   3.8        614          2552213           377154
+##  4 Tarra… 48439  51081    728   3.7        409          1983675           306980
+##  5 Travis 48453  29647    430   3.1        294          1176584           160972
+##  6 Hidal… 48215  32346   1740   6.7        271           839539           119536
+##  7 Lubbo… 48303  12398    131   3.2        267           298042            49312
+##  8 El Pa… 48141  24999    531   4.8        203           834825           133011
+##  9 Collin 48085  14154    150   3.4        195           914075           135322
+## 10 Smith  48423   4969    108   4.4        194           222277            47438
+## # … with 241 more rows, and 4 more variables: `Percent of Population Aged
+## #   60+` &lt;dbl&gt;, `Residents Aged 60+ Per Each ICU Bed` &lt;chr&gt;, rate_cat &lt;chr&gt;,
+## #   ICU_cat &lt;chr&gt;</code></pre>
+<pre class="r"><code># summarize used to find summary statistics, pivot_longer and
+# pivot_wider used to reshape data
+summary_data &lt;- county_join %&gt;% summarize_if(is.numeric, list(mean, 
+    sd, n_distinct, min, max))
+summary_data %&gt;% pivot_longer(cols = 1:35, names_to = &quot;statistic&quot;, 
+    values_to = &quot;value&quot;) %&gt;% separate(statistic, sep = &quot;_&quot;, into = c(&quot;variable&quot;, 
+    &quot;statistic&quot;)) %&gt;% pivot_wider(names_from = &quot;statistic&quot;, values_from = &quot;value&quot;) %&gt;% 
+    rename(mean = fn1, sd = fn2, n_distinct = fn3, min = fn4, 
+        max = fn5)</code></pre>
+<pre><code>## # A tibble: 7 x 6
+##   variable                            mean        sd n_distinct   min       max
+##   &lt;chr&gt;                              &lt;dbl&gt;     &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt;
+## 1 cases                            3159.    12320.          227   1    146234  
+## 2 deaths                             64.8     241.           80   0      2615  
+## 3 Rate                                4.88      1.73         64   1.7      13.7
+## 4 ICU Beds                           24.7      92.7          49   0       918  
+## 5 Total Population               109158.   391647.          251 564   4525519  
+## 6 Population Aged 60+             18379.    57873.          249  89    651673  
+## 7 Percent of Population Aged 60+     23.4       6.33        165  12.4      45.5</code></pre>
+<pre class="r"><code># same as above except now grouped by rate_cat using
+# group_by()
+county_join %&gt;% group_by(rate_cat) %&gt;% summarize_if(is.numeric, 
+    list(mean, sd, n_distinct, min, max)) %&gt;% pivot_longer(cols = 2:35, 
+    names_to = &quot;statistic&quot;, values_to = &quot;value&quot;) %&gt;% separate(statistic, 
+    sep = &quot;_&quot;, into = c(&quot;variable&quot;, &quot;statistic&quot;)) %&gt;% pivot_wider(names_from = &quot;statistic&quot;, 
+    values_from = &quot;value&quot;) %&gt;% rename(mean = fn1, sd = fn2, n_distinct = fn3, 
+    min = fn4, max = fn5) %&gt;% select(-c(`Percent of Population Aged 60+_fn5`))</code></pre>
+<pre><code>## # A tibble: 21 x 7
+##    rate_cat variable                     mean       sd n_distinct    min     max
+##    &lt;chr&gt;    &lt;chr&gt;                       &lt;dbl&gt;    &lt;dbl&gt;      &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;
+##  1 high     cases                      9.58e2  1.31e+3         13   82    3789  
+##  2 high     deaths                     3.72e1  5.21e+1         12    3     170  
+##  3 high     Rate                       1.04e1  1.45e+0         13    8.5    13.7
+##  4 high     ICU Beds                   1.38e0  3.40e+0          3    0      10  
+##  5 high     Total Population           2.10e4  1.98e+4         13 5262   63420  
+##  6 high     Population Aged 60+        4.06e3  2.91e+3         13 1372    9636  
+##  7 high     Percent of Population Ag…  2.28e1  6.97e+0         13   15.2    NA  
+##  8 low      cases                      4.75e3  1.37e+4         67    1   86500  
+##  9 low      deaths                     7.48e1  2.21e+2         41    0    1323  
+## 10 low      Rate                       3.38e0  4.58e-1         18    1.7     3.9
+## # … with 11 more rows</code></pre>
+</div>
+<div id="visualizing" class="section level4">
+<h4>4. Visualizing</h4>
+<p>In the heatmap, the variables with the highest correlations were population aged 60+ and COVID-19 cases and deaths, COVID-19 deaths and COVID-19 cases, number of ICU beds and COVID-19 deaths, number of ICU beds and COVID-19 cases, and population aged 60+ and number of ICU beds. There was almost no correlation between unemployment rate and any other variable.</p>
+<p>In the geom_point ggplot we see a relationship between the number of COVID-19 cases and the number of people over aged 60. There are higher amounts of COVID-19 cases in populations with a higher amount of people aged 60+. This plot was also separated by rate of unemployment, but there is no clear relationship between unemployment rate, number of COVID-19 cases, and the number of people aged 60+. There does seem to be a slightly higher rate of unemployment where the population over age 60 is small, but it is not a big enough difference to take note of.</p>
+<p>In the geom_bar plot there is a relationship between the number of COVID-19 cases and the unemployment rate. Texas counties with a medium unemployment rate, which is defined as a rate between 4 and 8, have the highest number of COVID-19 cases, and Texas counties with a low unemployment rate, defined as a rate below 4, have the second highest number of COVID-19 cases. Counties with high rates of unemployment, rates above 8, have very few COVID-19 cases. Additionally, counties with medium unemployment were more likely to have low numbers of ICU beds than counties with low unemployment. Low number of ICU beds is defined as having less than 250 ICU beds in the county. Counties with high rates of unemployment only had low amounts of ICU beds.</p>
+<pre class="r"><code># correlation heatmap
+cormat &lt;- county_join %&gt;% select_if(is.numeric) %&gt;% cor(use = &quot;pair&quot;)
+tidycor &lt;- cormat %&gt;% as.data.frame %&gt;% rownames_to_column(&quot;var1&quot;) %&gt;% 
+    pivot_longer(-1, names_to = &quot;var2&quot;, values_to = &quot;correlation&quot;)
+tidycor %&gt;% ggplot(aes(var1, var2, fill = correlation)) + geom_tile() + 
+    scale_fill_gradient2(low = &quot;snow&quot;, mid = &quot;thistle&quot;, high = &quot;thistle4&quot;) + 
+    geom_text(aes(label = round(correlation, 2)), color = &quot;black&quot;, 
+        size = 4) + theme(axis.text.x = element_text(angle = 90, 
+    hjust = 1)) + coord_fixed() + ggtitle(&quot;Correlation Heatmap of Numeric Variables&quot;)</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-4-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>library(ggplot2)
+# geom_point
+ggplot(county_join, aes(`Population Aged 60+`, cases, color = Rate)) + 
+    geom_point(size = 2, stat = &quot;summary&quot;, fun = mean) + ggtitle(&quot;Population Aged 60+ vs. COVID-19 Cases by Rate of Unemployment&quot;) + 
+    ylab(&quot;COVID-19 Cases&quot;) + scale_color_gradient(low = &quot;lightpink3&quot;, 
+    high = &quot;palegreen4&quot;) + theme_linedraw() + scale_y_continuous(breaks = seq(0, 
+    150000, 25000))</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-4-2.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code># geom_bar
+ggplot(county_join, aes(rate_cat)) + geom_col(aes(y = cases, 
+    fill = ICU_cat)) + ggtitle(&quot;Unemployment Rate vs. COVID-19 Cases by Amount of ICU Beds&quot;) + 
+    ylab(&quot;COVID-19 Cases&quot;) + xlab(&quot;Unemployment Rate&quot;) + theme_linedraw() + 
+    scale_fill_manual(&quot;ICU_cat&quot;, values = c(high = &quot;lavenderblush2&quot;, 
+        low = &quot;lightgoldenrod1&quot;))</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-4-3.png" width="672" style="display: block; margin: auto;" /></p>
+</div>
+<div id="dimensionality-reduction" class="section level4">
+<h4>5. Dimensionality Reduction</h4>
+<p>The silhouette plot was used to determine how many clusters to use, it told us that there are a total of k = 10 clusters and so that many clusters was used in this analysis. After creating the clusters, they were plotted on a geom_point ggplot and the variables <code>Population Aged 60+</code> and <code>cases</code> were used because these two variables have one of the highest correlations among the variables in my data. The clustered data was then plotted with data separating the two chosen variables by either a high, medium, or low unemployment rate. However, we do not see a strong correlation between the clustered data and the unemployment rate data. Lastly, a goodness of fit line was plotted using the silhouette widths of each cluster. When looking at the silhouette plot, we can see that the silhouettes have an average width of 0.55, which means that a reasonable structure was found for the silhouettes.</p>
+<pre class="r"><code>## will want to scale variables first?
+library(cluster)
+
+# scale data
+
+pam1 &lt;- county_join %&gt;% pam(k = 10)
+pam1</code></pre>
+<pre><code>## Medoids:
+##        ID County  fips  cases deaths Rate ICU Beds Total Population
+##  [1,] 172     NA 48349   1724     34  4.1        9            48239
+##  [2,]  80     NA 48161    417      3  6.4        0            19646
+##  [3,] 123     NA 48247    111      3  9.1        0             5262
+##  [4,] 149     NA 48303  12398    131  3.2      267           298042
+##  [5,] 217     NA 48439  51081    728  3.7      409          1983675
+##  [6,] 240     NA 48485   1930     25  4.1       24           131778
+##  [7,] 243     NA 48491   8897    144  3.3       90           508313
+##       Population Aged 60+ Percent of Population Aged 60+
+##  [1,]               10925                           22.6
+##  [2,]                5012                           25.5
+##  [3,]                1372                           26.1
+##  [4,]               49312                           16.5
+##  [5,]              306980                           15.5
+##  [6,]               25521                           19.4
+##  [7,]               81426                           16.0
+##       Residents Aged 60+ Per Each ICU Bed rate_cat ICU_cat
+##  [1,]                                1214       NA      NA
+##  [2,]                                  NA       NA      NA
+##  [3,]                                  NA       NA      NA
+##  [4,]                                 185       NA      NA
+##  [5,]                                 751       NA      NA
+##  [6,]                                1063       NA      NA
+##  [7,]                                 905       NA      NA
+##  [ reached getOption(&quot;max.print&quot;) -- omitted 3 rows ]
+## Clustering vector:
+##   [1]  1  2  1  2  3  3  1  2  3  2  1  3  2  4  5  3  3  2  6  4  6  3  3  3  1
+##  [26]  2  1  1  2  2  7  2  3  2  3  1  1  3  3  3  3  3  8  3  2  6  2  3  1  1
+##  [51]  3  3  3  3  3  3  9  2  2  3  8  3  3  3  3  2  6  3  8  6  1  2  1  2  3
+##  [76]  3  3  8  3  2  2  2  4  3  2  3  3  2  2  6  6  2  6  1  3  3  3  3  1 10
+##  [ reached getOption(&quot;max.print&quot;) -- omitted 151 entries ]
+## Objective function:
+##    build     swap 
+## 14682.17 13625.56 
+## 
+## Available components:
+##  [1] &quot;medoids&quot;    &quot;id.med&quot;     &quot;clustering&quot; &quot;objective&quot;  &quot;isolation&quot; 
+##  [6] &quot;clusinfo&quot;   &quot;silinfo&quot;    &quot;diss&quot;       &quot;call&quot;       &quot;data&quot;</code></pre>
+<pre class="r"><code>pam1$silinfo$avg.width</code></pre>
+<pre><code>## [1] 0.5515645</code></pre>
+<pre class="r"><code>plot(pam1, which = 2)  #choose number of clusters</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-5-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>pamclust &lt;- county_join %&gt;% mutate(cluster = as.factor(pam1$clustering))  #cluster analysis
+
+pamclust %&gt;% ggplot(aes(`Population Aged 60+`, cases, color = cluster)) + 
+    geom_point()  #visualize clusters</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-5-2.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>pamclust %&gt;% group_by(cluster) %&gt;% summarize_if(is.numeric, mean, 
+    na.rm = T)</code></pre>
+<pre><code>## # A tibble: 10 x 8
+##    cluster  cases deaths  Rate `ICU Beds` `Total Populati… `Population Age…
+##    &lt;fct&gt;    &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;      &lt;dbl&gt;            &lt;dbl&gt;            &lt;dbl&gt;
+##  1 1       1.37e3 3.75e1  5.19      6.12            52665.           11415.
+##  2 2       5.06e2 1.26e1  5.28      1.39            20024.            4886.
+##  3 3       1.07e2 3.74e0  4.74      0.309            5479.            1373.
+##  4 4       1.08e4 1.81e2  4.69    101.             294712.           51434.
+##  5 5       5.46e4 1.03e3  3.7     528.            1937840.          307124.
+##  6 6       3.62e3 6.53e1  3.98     41.4            136532.           25028.
+##  7 7       1.44e4 4.19e2  4.90     97              487900.           83132.
+##  8 8       2.17e4 5.50e2  4.38    195.             876294.          127223.
+##  9 9       8.65e4 1.14e3  3.8     614             2552213           377154 
+## 10 10      1.46e5 2.62e3  5.1     918             4525519           651673 
+## # … with 1 more variable: `Percent of Population Aged 60+` &lt;dbl&gt;</code></pre>
+<pre class="r"><code>county_join %&gt;% slice(pam1$id.med)</code></pre>
+<pre><code>## # A tibble: 10 x 12
+##    County fips   cases deaths  Rate `ICU Beds` `Total Populati… `Population Age…
+##    &lt;chr&gt;  &lt;chr&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;      &lt;dbl&gt;            &lt;dbl&gt;            &lt;dbl&gt;
+##  1 Navar… 48349   1724     34   4.1          9            48239            10925
+##  2 Frees… 48161    417      3   6.4          0            19646             5012
+##  3 Jim H… 48247    111      3   9.1          0             5262             1372
+##  4 Lubbo… 48303  12398    131   3.2        267           298042            49312
+##  5 Tarra… 48439  51081    728   3.7        409          1983675           306980
+##  6 Wichi… 48485   1930     25   4.1         24           131778            25521
+##  7 Willi… 48491   8897    144   3.3         90           508313            81426
+##  8 El Pa… 48141  24999    531   4.8        203           834825           133011
+##  9 Dallas 48113  86500   1139   3.8        614          2552213           377154
+## 10 Harris 48201 146234   2615   5.1        918          4525519           651673
+## # … with 4 more variables: `Percent of Population Aged 60+` &lt;dbl&gt;, `Residents
+## #   Aged 60+ Per Each ICU Bed` &lt;chr&gt;, rate_cat &lt;chr&gt;, ICU_cat &lt;chr&gt;</code></pre>
+<pre class="r"><code>county_join %&gt;% ggplot(aes(`Population Aged 60+`, cases, color = rate_cat)) + 
+    geom_point()</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-5-3.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>pamclust %&gt;% ggplot(aes(`Population Aged 60+`, cases, color = rate_cat, 
+    shape = cluster)) + geom_point(size = 3)</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-5-4.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>pam_dat &lt;- county_join %&gt;% select(`Population Aged 60+`, cases)  #goodness of fit
+sil_width &lt;- vector()
+for (i in 2:10) {
+    pam_fit &lt;- pam(pam_dat, k = i)
+    sil_width[i] &lt;- pam_fit$silinfo$avg.width
+}
+ggplot() + geom_line(aes(x = 1:10, y = sil_width)) + scale_x_continuous(name = &quot;k&quot;, 
+    breaks = 1:10)</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-5-5.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot(pam1, which = 2)  #silhouette plot</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-5-6.png" width="672" style="display: block; margin: auto;" /></p>
+<p>...</p>
+</div>
+
+            
+        <hr>         <div class="related-posts">
+                <h5>Related Posts</h5>
+                
+              </div> 
+            </div>
+          </div>
+
+   <hr>  <div class="disqus">
+  <div id="disqus_thread"></div>
+  <script type="text/javascript">
+
+    (function() {
+      
+      
+      if (window.location.hostname == "localhost")
+        return;
+
+      var disqus_shortname = '';
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  <a href="http://disqus.com/" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div> 
+        </div>
+      </div>
+    </div>
+
+    
+    <footer>
+  <div id="footer">
+    <div class="container">
+      <p class="text-muted">&copy; All rights reserved. Powered by <a href="https://gohugo.io/">Hugo</a> and
+      <a href="http://www.github.com/nurlansu/hugo-sustain/">sustain</a> with ♥</p>
+    </div>
+  </div>
+</footer>
+<div class="footer"></div>
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+<script src="../../js/docs.min.js"></script>
+<script src="../../js/main.js"></script>
+
+<script src="../../js/ie10-viewport-bug-workaround.js"></script>
+
+
+    
+  </body>
+</html>
